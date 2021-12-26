@@ -1,6 +1,8 @@
 // #region core
 pub mod utils;
 use crate::utils::*;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::system_instruction;
@@ -85,6 +87,11 @@ mod puppet_master {
         let house = &ctx.accounts.house;
         let data = recent_blockhashes.data.borrow();
         let most_recent = array_ref![data, 8, 8];
+        let user_head = user.key;
+        let index = calculate_hash(&HashOfHash {
+            recent_blockhash: *most_recent,
+            user: user_head.to_bytes()
+        });
         invoke(
             &system_instruction::transfer(user.key, house_fee_account.key, FEE),
             &[
@@ -93,7 +100,7 @@ mod puppet_master {
                 ctx.accounts.system_program.to_account_info().clone(),
             ],
         )?;
-        let index = u64::from_le_bytes(*most_recent);
+        // let index = u64::from_le_bytes(*most_recent);
         let tos: String = index.to_string();
         let first: String = tos.chars().last().unwrap().to_string();
         let firstf: u64 = first.parse::<u64>().unwrap();
@@ -169,6 +176,17 @@ pub struct PullStrings<'info> {
 
 // #endregion core
 
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
+#[derive(Hash)]
+pub struct HashOfHash {
+    pub recent_blockhash: [u8; 8],
+    pub user: [u8; 32]
+}
 
 #[account]
 pub struct House {
