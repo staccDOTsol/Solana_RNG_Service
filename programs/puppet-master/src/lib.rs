@@ -76,6 +76,8 @@ mod puppet_master {
         Ok(())
     }
 
+    // TODO - https://docs.solana.com/developing/runtime-facilities/sysvars
+
     pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
         let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let recent_blockhashes = &ctx.accounts.recent_blockhashes;
