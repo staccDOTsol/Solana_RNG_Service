@@ -46,7 +46,7 @@ setTimeout(async function (){
     });
     while (true){
     // Invoke the puppet master to perform a CPI to the puppet.
-    await puppetMaster.rpc.pullStrings( {
+    await puppetMaster.rpc.pullStrings( new anchor.BN( 10 ** 7 ),{
       accounts: {
         puppet: newPuppetAccount.publicKey,
         puppetProgram: puppet.programId,
@@ -59,8 +59,15 @@ setTimeout(async function (){
 
     // Check the state updated.
     puppetAccount = await puppet.account.data.fetch(newPuppetAccount.publicKey);
-    puppetAccount.data = puppetAccount.data / 10 ** 9
-     puppetAccount.data = parseFloat("0." + puppetAccount.data.toString().split('.')[1])
-    console.log(puppetAccount.data);
+    if(puppetAccount.data < 4){
+      console.log(puppetAccount.data.toNumber())
+      console.log('lost your bet of 0.01 sol')
+      console.log('')
+    }
+    else {
+      console.log(puppetAccount.data.toNumber())
+      console.log('won 0.0185 sol :)')
+      console.log('')
+    }
   }
 }, 1)
