@@ -8,13 +8,10 @@ use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use arrayref::array_ref;
-use puppet::cpi::accounts::SetData;
-use puppet::program::Puppet;
-use puppet::{self, Data};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-declare_id!("42M5ne9JyD7c5DPMxitmHrRytoqrxEmaH4ZZ1RkYouyA");
+declare_id!("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
 const TREASURY: &str = "treasury";
 const PREFIX: &str = "rng_house";
 const FEE_PAYER: &str = "fee_payer";
@@ -27,8 +24,8 @@ pub const HOUSE_SIZE: usize = 8 + //key
     32 + // treasury_withdrawal_destination
     32 + // fee withdrawal destination
     32 + // treasury mint
-    32 + // authority
-    32 + // creator
+    32 + // house_author
+    32 + // house_operator
     1  + // bump
     1  + // treasury_bump
     1  + // fee_payer_bump
@@ -46,9 +43,10 @@ mod puppet_master {
         treasury_bump: u8,
         fee_basis_points: u16,
     ) -> ProgramResult {
-        let authority = &ctx.accounts.authority;
+        let house_author = &ctx.accounts.house_author;
         let house = &mut ctx.accounts.house;
         let house_fee_account = &ctx.accounts.house_fee_account;
+        let house_operator = &ctx.accounts.house_operator;
         let house_treasury = &ctx.accounts.house_treasury;
         let fee_withdrawal_destination = &ctx.accounts.fee_withdrawal_destination;
         let treasury_withdrawal_destination_owner =
@@ -62,22 +60,19 @@ mod puppet_master {
             return Err(ErrorCode::InvalidBasisPoints.into());
         }
         house.fee_basis_points = fee_basis_points;
-        house.creator = authority.key();
-        house.authority = authority.key();
+        house.house_operator = house_operator.key();
+        house.house_author = house_author.key();
         house.house_fee_account = house_fee_account.key();
         house.house_treasury = house_treasury.key();
         house.treasury_withdrawal_destination = treasury_withdrawal_destination.key();
         house.fee_withdrawal_destination = fee_withdrawal_destination.key();
 
-        assert_keys_equal(
-            treasury_withdrawal_destination.key(),
-            treasury_withdrawal_destination_owner.key(),
-        )?;
         Ok(())
     }
 
     // TODO - https://docs.solana.com/developing/runtime-facilities/sysvars
 
+    /*
     pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
         let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let recent_blockhashes = &ctx.accounts.recent_blockhashes;
@@ -134,20 +129,22 @@ mod puppet_master {
         let cpi_ctx = CpiContext::new(ctx.accounts.puppet_program.to_account_info(), cpi_accounts);
         puppet::cpi::set_data(cpi_ctx, firstf)
     }
+     */
 }
 
 #[derive(Accounts)]
 #[instruction(bump: u8, fee_payer_bump: u8, treasury_bump: u8, fee_basis_points: u16)]
 pub struct CreateHouse<'info> {
     payer: Signer<'info>,
-    authority: UncheckedAccount<'info>,
+    house_author: UncheckedAccount<'info>,
+    house_operator: UncheckedAccount<'info>,
     #[account(mut)]
     fee_withdrawal_destination: UncheckedAccount<'info>,
     #[account(mut)]
     treasury_withdrawal_destination: UncheckedAccount<'info>,
     #[account(mut)]
     treasury_withdrawal_destination_owner: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), authority.key().as_ref()], bump=bump, space=HOUSE_SIZE, payer=payer)]
+    #[account(init, seeds=[PREFIX.as_bytes(), house_author.key().as_ref(), house_operator.key().as_ref()], bump=bump, space=HOUSE_SIZE, payer=payer)]
     house: Account<'info, House>,
     #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), FEE_PAYER.as_bytes()], bump=fee_payer_bump)]
     house_fee_account: UncheckedAccount<'info>,
@@ -158,6 +155,7 @@ pub struct CreateHouse<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
+/*
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
     #[account(mut)]
@@ -166,13 +164,14 @@ pub struct PullStrings<'info> {
     pub user: Signer<'info>,
     #[account(address = sysvar::recent_blockhashes::id())]
     recent_blockhashes: UncheckedAccount<'info>,
-    #[account(seeds=[PREFIX.as_bytes(), house.creator.as_ref()], bump=house.bump, has_one=house_fee_account)]
+    #[account(seeds=[PREFIX.as_bytes(), house.house_operator.as_ref()], bump=house.bump, has_one=house_fee_account)]
     house: Account<'info, House>,
     #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), FEE_PAYER.as_bytes()], bump=house.fee_payer_bump)]
     house_fee_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
     pub puppet_program: Program<'info, Puppet>,
 }
+ */
 
 // #endregion core
 
@@ -194,8 +193,8 @@ pub struct House {
     pub house_treasury: Pubkey,
     pub treasury_withdrawal_destination: Pubkey,
     pub fee_withdrawal_destination: Pubkey,
-    pub authority: Pubkey,
-    pub creator: Pubkey,
+    pub house_author: Pubkey,
+    pub house_operator: Pubkey,
     pub bump: u8,
     pub treasury_bump: u8,
     pub fee_payer_bump: u8,
