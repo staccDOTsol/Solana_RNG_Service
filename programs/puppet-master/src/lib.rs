@@ -12,12 +12,14 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::solana_program::sysvar;
-use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use arrayref::array_ref;
 
+use puppet::cpi::accounts::SetData;
+use puppet::program::Puppet;
+use puppet::{self, Data};
 
-declare_id!("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
+declare_id!("9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg");
 const TREASURY: &str = "treasury";
 const PREFIX: &str = "rng_house";
 const FEES: &str = "fees";
@@ -65,7 +67,7 @@ mod puppet_master {
         if user.lamports() < bet {
             return Err(ErrorCode::NotEnoughSOL.into());
         }
-        let house_fee_account = &ctx.accounts.house_fee_account;
+        let operator_fee_account = &ctx.accounts.operator_fee_account;
         let house = &ctx.accounts.house;
         let data = recent_blockhashes.data.borrow();
         let most_recent = array_ref![data, 8, 8];
@@ -75,10 +77,10 @@ mod puppet_master {
             user: user_head.to_bytes(),
         });
         invoke(
-            &system_instruction::transfer(user.key, house_fee_account.key, FEE),
+            &system_instruction::transfer(user.key, operator_fee_account.key, FEE),
             &[
                 user.to_account_info().clone(),
-                house_fee_account.to_account_info().clone(),
+                operator_fee_account.to_account_info().clone(),
                 ctx.accounts.system_program.to_account_info().clone(),
             ],
         )?;
@@ -89,9 +91,9 @@ mod puppet_master {
         let firstf2: f32 = first.parse::<f32>().unwrap();
         if firstf2 > 4.0 {
             invoke(
-                &system_instruction::transfer(house_fee_account.key, user.key, bet * 1.85 as u64),
+                &system_instruction::transfer(operator_fee_account.key, user.key, bet * 1.85 as u64),
                 &[
-                    house_fee_account.to_account_info().clone(),
+                    operator_fee_account.to_account_info().clone(),
                     user.to_account_info().clone(),
                     ctx.accounts.system_program.to_account_info().clone(),
                 ],
@@ -99,10 +101,10 @@ mod puppet_master {
         }
         if firstf2 <= 4.0 {
             invoke(
-                &system_instruction::transfer(user.key, house_fee_account.key, bet),
+                &system_instruction::transfer(user.key, operator_fee_account.key, bet),
                 &[
                     user.to_account_info().clone(),
-                    house_fee_account.to_account_info().clone(),
+                    operator_fee_account.to_account_info().clone(),
                     ctx.accounts.system_program.to_account_info().clone(),
                 ],
             )?;
@@ -117,17 +119,21 @@ mod puppet_master {
 }
 
 #[derive(Accounts)]
+#[instruction(house_bump: u8,operator_treasury_bump: u8, operator_fee_bump: u8)]
 pub struct PullStrings<'info> {
+    author: UncheckedAccount<'info>,
+    #[account(mut)]
+    operator: UncheckedAccount<'info>,
     #[account(mut)]
     pub puppet: Account<'info, Data>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(address = sysvar::recent_blockhashes::id())]
     recent_blockhashes: UncheckedAccount<'info>,
-    #[account(seeds=[PREFIX.as_bytes(), house.house_operator.as_ref()], bump=house.bump, has_one=house_fee_account)]
+    #[account(seeds=[PREFIX.as_bytes(), author.key().as_ref(), operator.key().as_ref()], bump=house_bump, has_one=operator_fee_account)]
     house: Account<'info, House>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), FEE_PAYER.as_bytes()], bump=house.fee_payer_bump)]
-    house_fee_account: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), FEES.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_fee_bump)]
+    operator_fee_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
     pub puppet_program: Program<'info, Puppet>,
 }

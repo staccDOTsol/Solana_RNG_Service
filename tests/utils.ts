@@ -7,7 +7,7 @@ export const TOKEN_PROGRAM_ID = new PublicKey(
     'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
 );
 
-const HOUSE_PROGRAM_ID = new PublicKey("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
+const HOUSE_PROGRAM_ID = new PublicKey("9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg");
 const PREFIX = 'rng_house';
 const FEES = "fees";
 const TREASURY = 'treasury';

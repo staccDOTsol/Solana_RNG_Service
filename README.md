@@ -2,4 +2,4 @@
 anchor build && anchor deploy
 
 # Publish
-anchor idl init --filepath target/idl/puppet_master.json EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM
+anchor idl init --filepath target/idl/puppet_master.json 9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg
