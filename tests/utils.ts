@@ -20,12 +20,16 @@ export function loadWalletKey(keypair: string): Keypair {
 }
 
 export async function loadHouseProgram(walletKeyPair: Keypair): Promise<Program> {
-  const idl = JSON.parse(fs.readFileSync('./target/idl/puppet_master.json', {encoding:'utf8', flag:'r'}));
   const solConnection = new Connection("https://api.devnet.solana.com");
   const walletWrapper = new anchor.Wallet(walletKeyPair);
   const provider = new anchor.Provider(solConnection, walletWrapper, {
     preflightCommitment: 'recent',
   });
+  const idl = await anchor.Program.fetchIdl(
+    HOUSE_PROGRAM_ID,
+    provider,
+  );
+  
   // const idl = await anchor.Program.fetchIdl(HOUSE_PROGRAM_ID, provider);
 
   return new anchor.Program(idl, HOUSE_PROGRAM_ID, provider);

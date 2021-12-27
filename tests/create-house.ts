@@ -9,13 +9,13 @@ import {
 import {Keypair, SYSVAR_RENT_PUBKEY, SystemProgram} from "@solana/web3.js";
 import * as anchor from '@project-serum/anchor';
 
-const walletJson = "/home/ohad/.config/solana/id.json";
+const walletJson = "../throwaway.json"
 
 const walletKeyPair = loadWalletKey(walletJson);
 
 async function main() {
   const puppetMaster = await loadHouseProgram(walletKeyPair);
-  const author = new anchor.web3.PublicKey("8RkPXKyE59XkNHAdJAFcgeNgFR4VbpPypgMaBbmxguU3")
+  const author = new anchor.web3.PublicKey("4tui4yfA6MNgLhjXmKBATrPvEUGseEeqQrqAyVHintUQ")
   const operator = Keypair.generate();
   const [house, houseBump] = await getHouse(author, operator.publicKey);
   const [authorFeeAccount, authorFeeAccountBump] = await getAuthorFeeAccount(house, author, operator.publicKey);
@@ -47,6 +47,7 @@ async function main() {
         signers: [walletKeyPair],
       });
   console.log(tx);
+  console.log(house.toBase58());
 }
 
 main().then(() => console.log("Success"));

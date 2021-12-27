@@ -1,6 +1,6 @@
 [provider]
 cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+wallet = "./throwaway.json"
 
 [programs.localnet]
 puppet = "CduvxgqTSJN3BTAYuMBnGAaN2GvTRGpXypQHKVbyvyoA"

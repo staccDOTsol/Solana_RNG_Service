@@ -58,9 +58,6 @@ mod puppet_master {
         Ok(())
     }
 
-    // TODO - https://docs.solana.com/developing/runtime-facilities/sysvars
-
-    /*
     pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
         let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let recent_blockhashes = &ctx.accounts.recent_blockhashes;
@@ -117,10 +114,8 @@ mod puppet_master {
         let cpi_ctx = CpiContext::new(ctx.accounts.puppet_program.to_account_info(), cpi_accounts);
         puppet::cpi::set_data(cpi_ctx, firstf)
     }
-     */
 }
 
-/*
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
     #[account(mut)]
@@ -136,7 +131,6 @@ pub struct PullStrings<'info> {
     pub system_program: Program<'info, System>,
     pub puppet_program: Program<'info, Puppet>,
 }
- */
 
 // #endregion core
 
