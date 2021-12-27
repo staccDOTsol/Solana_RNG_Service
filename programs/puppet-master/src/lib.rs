@@ -1,5 +1,12 @@
 // #region core
-pub mod utils;
+mod utils;
+mod constants;
+mod errors;
+mod myaccounts;
+
+use myaccounts::{House};
+use constants::{HOUSE_SIZE};
+use errors::{ErrorCode};
 use crate::utils::*;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke;
@@ -8,29 +15,14 @@ use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use arrayref::array_ref;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+
 
 declare_id!("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
 const TREASURY: &str = "treasury";
 const PREFIX: &str = "rng_house";
-const FEE_PAYER: &str = "fee_payer";
+const FEES: &str = "fees";
 const SIGNER: &str = "signer";
 const FEE: u64 = 5000000;
-
-pub const HOUSE_SIZE: usize = 8 + //key
-    32 + // fee payer
-    32 + // treasury
-    32 + // treasury_withdrawal_destination
-    32 + // fee withdrawal destination
-    32 + // treasury mint
-    32 + // house_author
-    32 + // house_operator
-    1  + // bump
-    1  + // treasury_bump
-    1  + // fee_payer_bump
-    2  + // fee basis points
-    220; // padding
 
 #[program]
 mod puppet_master {
@@ -38,35 +30,31 @@ mod puppet_master {
 
     pub fn create_house<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateHouse<'info>>,
-        bump: u8,
-        fee_payer_bump: u8,
-        treasury_bump: u8,
+        house_bump: u8,
+        author_fee_bump: u8,
+        operator_treasury_bump: u8,
+        operator_fee_bump: u8,
         fee_basis_points: u16,
     ) -> ProgramResult {
-        let house_author = &ctx.accounts.house_author;
-        let house = &mut ctx.accounts.house;
-        let house_fee_account = &ctx.accounts.house_fee_account;
-        let house_operator = &ctx.accounts.house_operator;
-        let house_treasury = &ctx.accounts.house_treasury;
-        let fee_withdrawal_destination = &ctx.accounts.fee_withdrawal_destination;
-        let treasury_withdrawal_destination_owner =
-            &ctx.accounts.treasury_withdrawal_destination_owner;
-        let treasury_withdrawal_destination = &ctx.accounts.treasury_withdrawal_destination;
-
-        house.bump = bump;
-        house.fee_payer_bump = fee_payer_bump;
-        house.treasury_bump = treasury_bump;
         if fee_basis_points > 10000 {
-            return Err(ErrorCode::InvalidBasisPoints.into());
+            return Err(errors::ErrorCode::InvalidBasisPoints.into());
         }
-        house.fee_basis_points = fee_basis_points;
-        house.house_operator = house_operator.key();
-        house.house_author = house_author.key();
-        house.house_fee_account = house_fee_account.key();
-        house.house_treasury = house_treasury.key();
-        house.treasury_withdrawal_destination = treasury_withdrawal_destination.key();
-        house.fee_withdrawal_destination = fee_withdrawal_destination.key();
 
+        let house = &mut ctx.accounts.house;
+
+        house.house_bump = house_bump;
+        house.author_fee_bump = author_fee_bump;
+        house.operator_fee_bump = operator_fee_bump;
+        house.operator_treasury_bump = operator_treasury_bump;
+        house.author = ctx.accounts.author.key();
+        house.operator = ctx.accounts.operator.key();
+        house.author_fee_account = ctx.accounts.author_fee_account.key();
+        house.author_fee_account_destination = ctx.accounts.author_fee_account_destination.key();
+        house.operator_treasury = ctx.accounts.operator_treasury.key();
+        house.operator_treasury_destination = ctx.accounts.operator_treasury_destination.key();
+        house.operator_fee_account = ctx.accounts.operator_fee_account.key();
+        house.operator_fee_destination = ctx.accounts.operator_fee_destination.key();
+        house.fee_basis_points = fee_basis_points;
         Ok(())
     }
 
@@ -132,29 +120,6 @@ mod puppet_master {
      */
 }
 
-#[derive(Accounts)]
-#[instruction(bump: u8, fee_payer_bump: u8, treasury_bump: u8, fee_basis_points: u16)]
-pub struct CreateHouse<'info> {
-    payer: Signer<'info>,
-    house_author: UncheckedAccount<'info>,
-    house_operator: UncheckedAccount<'info>,
-    #[account(mut)]
-    fee_withdrawal_destination: UncheckedAccount<'info>,
-    #[account(mut)]
-    treasury_withdrawal_destination: UncheckedAccount<'info>,
-    #[account(mut)]
-    treasury_withdrawal_destination_owner: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), house_author.key().as_ref(), house_operator.key().as_ref()], bump=bump, space=HOUSE_SIZE, payer=payer)]
-    house: Account<'info, House>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), FEE_PAYER.as_bytes()], bump=fee_payer_bump)]
-    house_fee_account: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), TREASURY.as_bytes()], bump=treasury_bump)]
-    house_treasury: UncheckedAccount<'info>,
-    token_program: Program<'info, Token>,
-    system_program: Program<'info, System>,
-    rent: Sysvar<'info, Rent>,
-}
-
 /*
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
@@ -175,52 +140,24 @@ pub struct PullStrings<'info> {
 
 // #endregion core
 
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-
-#[derive(Hash)]
-pub struct HashOfHash {
-    pub recent_blockhash: [u8; 8],
-    pub user: [u8; 32],
-}
-
-#[account]
-pub struct House {
-    pub house_fee_account: Pubkey,
-    pub house_treasury: Pubkey,
-    pub treasury_withdrawal_destination: Pubkey,
-    pub fee_withdrawal_destination: Pubkey,
-    pub house_author: Pubkey,
-    pub house_operator: Pubkey,
-    pub bump: u8,
-    pub treasury_bump: u8,
-    pub fee_payer_bump: u8,
-    pub fee_basis_points: u16,
-}
-
-#[error]
-pub enum ErrorCode {
-    #[msg("Not enough SOL to pay for this minting")]
-    NotEnoughSOL,
-
-    #[msg("Numerical overflow error!")]
-    NumericalOverflowError,
-
-    #[msg("Unable to find an unused config line near your random number index")]
-    CannotFindUsableConfigLine,
-
-    #[msg("BP must be less than or equal to 10000")]
-    InvalidBasisPoints,
-
-    #[msg("PublicKeyMismatch")]
-    PublicKeyMismatch,
-
-    #[msg("UninitializedAccount")]
-    UninitializedAccount,
-
-    #[msg("IncorrectOwner")]
-    IncorrectOwner,
+#[derive(Accounts)]
+#[instruction(house_bump: u8, author_fee_bump: u8, operator_treasury_bump: u8, operator_fee_bump: u8, fee_basis_points: u16)]
+pub struct CreateHouse<'info> {
+    author: Signer<'info>,
+    #[account(mut)]
+    operator: UncheckedAccount<'info>,
+    #[account(init, seeds=[PREFIX.as_bytes(), author.key().as_ref(), operator.key().as_ref()], bump=house_bump, space=HOUSE_SIZE, payer=author)]
+    house: Account<'info, House>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), FEES.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=author_fee_bump)]
+    author_fee_account: UncheckedAccount<'info>,
+    author_fee_account_destination: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), TREASURY.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_treasury_bump)]
+    operator_treasury: UncheckedAccount<'info>,
+    operator_treasury_destination: UncheckedAccount<'info>,
+    #[account(mut, seeds=[PREFIX.as_bytes(), FEES.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_fee_bump)]
+    operator_fee_account: UncheckedAccount<'info>,
+    operator_fee_destination: UncheckedAccount<'info>,
+    token_program: Program<'info, Token>,
+    system_program: Program<'info, System>,
+    rent: Sysvar<'info, Rent>,
 }

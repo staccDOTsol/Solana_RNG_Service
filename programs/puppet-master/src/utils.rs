@@ -1,3 +1,5 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use {
     crate::ErrorCode,
     anchor_lang::{
@@ -96,4 +98,16 @@ pub fn create_or_allocate_account_raw<'a>(
     msg!("Completed assignation!");
 
     Ok(())
+}
+
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
+#[derive(Hash)]
+pub struct HashOfHash {
+    pub recent_blockhash: [u8; 8],
+    pub user: [u8; 32],
 }
