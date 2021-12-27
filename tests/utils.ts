@@ -7,10 +7,12 @@ export const TOKEN_PROGRAM_ID = new PublicKey(
     'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
 );
 
-const HOUSE_PROGRAM_ID = new PublicKey("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
-const PREFIX = 'rng_house';
-const FEES = "fees";
-const TREASURY = 'treasury';
+export const HOUSE_PROGRAM_ID = new PublicKey("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
+export const PREFIX = 'rng_house';
+export const FEES = "fees";
+export const TREASURY = 'treasury';
+export const solConnection = new anchor.web3.Connection("https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/",);
+
 
 export function loadWalletKey(keypair: string): Keypair {
   if (!keypair || keypair === '') {
@@ -29,7 +31,7 @@ export async function loadHouseProgram(walletKeyPair: Keypair): Promise<Program>
     HOUSE_PROGRAM_ID,
     provider,
   );
-  
+
   // const idl = await anchor.Program.fetchIdl(HOUSE_PROGRAM_ID, provider);
 
   return new anchor.Program(idl, HOUSE_PROGRAM_ID, provider);
