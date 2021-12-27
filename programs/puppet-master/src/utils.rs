@@ -1,5 +1,5 @@
 use {
-    crate::{ErrorCode},
+    crate::ErrorCode,
     anchor_lang::{
         prelude::*,
         solana_program::{
@@ -8,7 +8,7 @@ use {
             system_instruction,
         },
     },
-    std::{convert::TryInto},
+    std::convert::TryInto,
 };
 
 pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {

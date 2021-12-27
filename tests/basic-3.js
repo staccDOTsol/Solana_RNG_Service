@@ -14,8 +14,8 @@ function loadWalletKey(keypair) {
   );
 }
 
-const jare = "8RkPXKyE59XkNHAdJAFcgeNgFR4VbpPypgMaBbmxguU3";
-const walletJson = "/home/ohad/.config/solana/id.json";
+const jare = "6X3oVE5Hq923M2UEJregoA7zLxuc2jXcJJegpy24pb2T";
+const walletJson = "/mnt/c/id.json";
 
 const walletKeyPair = loadWalletKey(walletJson);
 const walletWrapper = new anchor.Wallet(walletKeyPair);

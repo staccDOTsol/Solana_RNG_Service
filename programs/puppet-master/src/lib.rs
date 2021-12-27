@@ -1,8 +1,6 @@
 // #region core
 pub mod utils;
 use crate::utils::*;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::system_instruction;
@@ -13,8 +11,10 @@ use arrayref::array_ref;
 use puppet::cpi::accounts::SetData;
 use puppet::program::Puppet;
 use puppet::{self, Data};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
-declare_id!("7yF2TQsGsGiwZXfMq9EuePbjFP8Zjo7rVDTbHfBFPbgt");
+declare_id!("42M5ne9JyD7c5DPMxitmHrRytoqrxEmaH4ZZ1RkYouyA");
 const TREASURY: &str = "treasury";
 const PREFIX: &str = "rng_house";
 const FEE_PAYER: &str = "fee_payer";
@@ -35,7 +35,6 @@ pub const HOUSE_SIZE: usize = 8 + //key
     2  + // fee basis points
     220; // padding
 
-
 #[program]
 mod puppet_master {
     use super::*;
@@ -52,7 +51,8 @@ mod puppet_master {
         let house_fee_account = &ctx.accounts.house_fee_account;
         let house_treasury = &ctx.accounts.house_treasury;
         let fee_withdrawal_destination = &ctx.accounts.fee_withdrawal_destination;
-        let treasury_withdrawal_destination_owner = &ctx.accounts.treasury_withdrawal_destination_owner;
+        let treasury_withdrawal_destination_owner =
+            &ctx.accounts.treasury_withdrawal_destination_owner;
         let treasury_withdrawal_destination = &ctx.accounts.treasury_withdrawal_destination;
 
         house.bump = bump;
@@ -92,7 +92,7 @@ mod puppet_master {
         let user_head = user.key;
         let index = calculate_hash(&HashOfHash {
             recent_blockhash: *most_recent,
-            user: user_head.to_bytes()
+            user: user_head.to_bytes(),
         });
         invoke(
             &system_instruction::transfer(user.key, house_fee_account.key, FEE),
@@ -136,9 +136,8 @@ mod puppet_master {
     }
 }
 
-
 #[derive(Accounts)]
-#[instruction(bump: u8, fee_payer_bump: u8, treasury_bump: u8)]
+#[instruction(bump: u8, fee_payer_bump: u8, treasury_bump: u8, fee_basis_points: u16)]
 pub struct CreateHouse<'info> {
     payer: Signer<'info>,
     authority: UncheckedAccount<'info>,
@@ -159,7 +158,6 @@ pub struct CreateHouse<'info> {
     rent: Sysvar<'info, Rent>,
 }
 
-
 #[derive(Accounts)]
 pub struct PullStrings<'info> {
     #[account(mut)]
@@ -173,7 +171,7 @@ pub struct PullStrings<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), FEE_PAYER.as_bytes()], bump=house.fee_payer_bump)]
     house_fee_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
-    pub puppet_program: Program<'info, Puppet>
+    pub puppet_program: Program<'info, Puppet>,
 }
 
 // #endregion core
@@ -187,7 +185,7 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 #[derive(Hash)]
 pub struct HashOfHash {
     pub recent_blockhash: [u8; 8],
-    pub user: [u8; 32]
+    pub user: [u8; 32],
 }
 
 #[account]
