@@ -109,3 +109,12 @@ export async function getOperatorFeeAccount(house: PublicKey, author: PublicKey,
 }
 
 
+export async function getConfig (
+  operator: PublicKey,
+  uuid: string,
+) {
+  return await anchor.web3.PublicKey.findProgramAddress(
+    [Buffer.from(PREFIX), operator.toBuffer(), Buffer.from(uuid)],
+    HOUSE_PROGRAM_ID,
+  );
+};

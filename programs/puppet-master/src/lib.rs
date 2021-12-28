@@ -38,6 +38,32 @@ const SIGNER: &str = "signer";
 #[program]
 mod puppet_master {
     use super::*;
+    pub fn initialize_operator_treasury(ctx: Context<InitializeOperatorTreasury>) -> ProgramResult {
+        let operator_treasury_info = &mut ctx.accounts.operator_treasury;
+        let payer = &ctx.accounts.payer;
+        let treasury_info = &ctx.accounts.operator_treasury;
+        
+        let mut OT = OperatorTreasury {
+            operator: *ctx.accounts.operator.key,
+        };
+
+
+        Ok(())
+    }
+    pub fn withdraw_funds<'info>(ctx: Context<WithdrawFunds<'info>>) -> ProgramResult {
+        let operator = &ctx.accounts.operator;
+        let pay = &ctx.accounts.operator_treasury.to_account_info();
+        let snapshot: u64 = pay.lamports();
+
+        **pay.lamports.borrow_mut() = 0;
+
+        **operator.lamports.borrow_mut() = operator
+            .lamports()
+            .checked_add(snapshot)
+            .ok_or(ErrorCode::NumericalOverflowError)?;
+
+        Ok(())
+    }
 
     pub fn create_house<'info>(
         ctx: Context<'_, '_, '_, 'info, CreateHouse<'info>>,
@@ -73,25 +99,6 @@ mod puppet_master {
         let treasury_info = &ctx.accounts.operator_treasury;
         house.operator_treasury = treasury_info.key();
 
-        let signer_seeds = &[PREFIX.as_bytes(), TREASURY.as_bytes(), housekey.as_ref(),  house.author.as_ref(), house.operator.as_ref(),
-            &[operator_treasury_bump],
-        ];
-
-        invoke(
-            &system_instruction::transfer(&author.key(), &treasury_info.key(), 1000000000),
-            &[
-                author.to_account_info().clone(),
-                treasury_info.to_account_info().clone(),
-                ctx.accounts.system_program.to_account_info().clone(),
-            ],
-        )?;
-        let accounts = &[treasury_info.to_account_info().clone(),house.to_account_info().clone(), ctx.accounts.system_program.to_account_info().clone()];
-
-        invoke_signed(
-            &system_instruction::assign(&treasury_info.key(), &house.key()),
-            accounts,
-            &[signer_seeds],
-        )?;
         house.operator_treasury_destination = ctx.accounts.operator_treasury_destination.key();
         house.operator_fee_account = ctx.accounts.operator_fee_account.key();
         house.operator_fee_destination = ctx.accounts.operator_fee_destination.key();
@@ -172,7 +179,6 @@ mod puppet_master {
         let firstf: u64 = first.parse::<u64>().unwrap();
         let firstf2: f32 = first.parse::<f32>().unwrap();
         if firstf2 > 4.0 {
-            /*
             let pay = &ctx.accounts.operator_treasury.to_account_info();
             let snapshot: u64 = pay.lamports();
     
@@ -184,8 +190,8 @@ mod puppet_master {
     
     
     
-            */
             
+            /*
             
         let signer_seeds = &[PREFIX.as_bytes(), TREASURY.as_bytes(), &*ctx.accounts.house.to_account_info().key.as_ref(),  house.author.as_ref(), house.operator.as_ref(),
         &[operator_treasury_bump],
@@ -203,6 +209,7 @@ mod puppet_master {
         )?;
         
 
+            */
     
         }
         if firstf2 <= 4.0 {
@@ -222,6 +229,16 @@ mod puppet_master {
         let cpi_ctx = CpiContext::new(ctx.accounts.puppet_program.to_account_info(), cpi_accounts);
         puppet::cpi::set_data(cpi_ctx, firstf)
     }
+}
+
+#[account]
+#[derive(Default)]
+pub struct OperatorTreasury {
+    pub operator: Pubkey,
+    // there's a borsh vec u32 denoting how many actual lines of data there are currently (eventually equals max number of lines)
+    // There is actually lines and lines of data after this but we explicitly never want them deserialized.
+    // here there is a borsh vec u32 indicating number of bytes in bitmask array.
+    // here there is a number of bytes equal to ceil(max_number_of_lines/8) and it is a bit mask used to figure out when to increment borsh vec u32
 }
 
 #[derive(Accounts)]
@@ -249,7 +266,24 @@ pub struct PullStrings<'info> {
     pub system_program: Program<'info, System>,
     pub puppet_program: Program<'info, Puppet>,
 }
+#[derive(Accounts)]
+pub struct InitializeOperatorTreasury<'info> {
+    #[account(mut)]
+    operator_treasury:AccountInfo<'info>,
+    operator: AccountInfo<'info>,
+    #[account(mut, signer)]
+    payer: AccountInfo<'info>,
+    rent: Sysvar<'info, Rent>,
+    system_program: Program<'info, System>,
+}
 
+#[derive(Accounts)]
+pub struct WithdrawFunds<'info> {
+    #[account(mut, has_one = operator)]
+    operator_treasury:Account<'info, OperatorTreasury>,
+    #[account(signer, address = operator_treasury.operator)]
+    operator: AccountInfo<'info>,
+}
 // #endregion core
 
 #[derive(Accounts)]
@@ -265,8 +299,10 @@ pub struct CreateHouse<'info> {
     #[account(mut, seeds=[PREFIX.as_bytes(), FEES.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_fee_bump)]
     operator_fee_account: UncheckedAccount<'info>,
     author_fee_account_destination: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), TREASURY.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_treasury_bump)]
-    operator_treasury: UncheckedAccount<'info>,
+    
+    #[account(has_one=operator)]
+    operator_treasury: ProgramAccount<'info, OperatorTreasury>,
+
     operator_treasury_destination: UncheckedAccount<'info>,
 
 
