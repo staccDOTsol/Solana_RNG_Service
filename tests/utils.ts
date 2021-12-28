@@ -7,12 +7,12 @@ export const TOKEN_PROGRAM_ID = new PublicKey(
     'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
 );
 
-export const HOUSE_PROGRAM_ID = new PublicKey("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
-export const PREFIX = 'rng_house';
-export const FEES = "fees";
-export const TREASURY = 'treasury';
-export const solConnection = new anchor.web3.Connection("https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/",);
+const HOUSE_PROGRAM_ID = new PublicKey("9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg");
+const PUPP_PROGRAM_ID = new PublicKey("39W6qnEQhdaWE25ANNauVesPV1d81QwbMCL5GRwAoymy");
 
+const PREFIX = 'rng_house';
+const FEES = "fees";
+const TREASURY = 'treasury';
 
 export function loadWalletKey(keypair: string): Keypair {
   if (!keypair || keypair === '') {
@@ -22,10 +22,10 @@ export function loadWalletKey(keypair: string): Keypair {
 }
 
 export async function loadHouseProgram(walletKeyPair: Keypair): Promise<Program> {
-  const solConnection = new Connection("https://api.devnet.solana.com");
+  const solConnection = new Connection(" http://127.0.0.1:8899");
   const walletWrapper = new anchor.Wallet(walletKeyPair);
   const provider = new anchor.Provider(solConnection, walletWrapper, {
-    preflightCommitment: 'recent',
+    preflightCommitment: 'confirmed',
   });
   const idl = await anchor.Program.fetchIdl(
     HOUSE_PROGRAM_ID,
@@ -36,7 +36,21 @@ export async function loadHouseProgram(walletKeyPair: Keypair): Promise<Program>
 
   return new anchor.Program(idl, HOUSE_PROGRAM_ID, provider);
 }
+export async function loadPuppProgram(walletKeyPair: Keypair): Promise<Program> {
+  const solConnection = new Connection(" http://127.0.0.1:8899");
+  const walletWrapper = new anchor.Wallet(walletKeyPair);
+  const provider = new anchor.Provider(solConnection, walletWrapper, {
+    preflightCommitment: 'confirmed',
+  });
+  const idl = await anchor.Program.fetchIdl(
+    PUPP_PROGRAM_ID,
+    provider,
+  );
 
+  // const idl = await anchor.Program.fetchIdl(HOUSE_PROGRAM_ID, provider);
+
+  return new anchor.Program(idl, PUPP_PROGRAM_ID, provider);
+}
 export async function getHouse(author: PublicKey, operator: PublicKey): Promise<[PublicKey, number]> {
   // #[account(init, seeds=[PREFIX.as_bytes(), author.key().as_ref(), operator.key().as_ref()], bump=house_bump, space=HOUSE_SIZE, payer=author)]
   // house: Account<'info, House>,
@@ -95,3 +109,12 @@ export async function getOperatorFeeAccount(house: PublicKey, author: PublicKey,
 }
 
 
+export async function getConfig (
+  operator: PublicKey,
+  uuid: string,
+) {
+  return await anchor.web3.PublicKey.findProgramAddress(
+    [Buffer.from(PREFIX), operator.toBuffer(), Buffer.from(uuid)],
+    HOUSE_PROGRAM_ID,
+  );
+};
