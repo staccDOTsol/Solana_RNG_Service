@@ -21,7 +21,7 @@ async function main() {
   const [authorFeeAccount, authorFeeAccountBump] = await getAuthorFeeAccount(house, author, operator.publicKey);
   const [operatorTreasuryAccount, operatorTreasuryAccountBump] = await getOperatorTreasuryAccount(house, author, operator.publicKey);
   const [operatorFeeAccount, operatorFeeAccountBump] = await getOperatorFeeAccount(house, author, operator.publicKey);
-  const feeBasisPoints = 100;
+  const feeBasisPoints = 350;
   console.log(walletKeyPair.publicKey)
   const tx = await puppetMaster.rpc.createHouse(
       houseBump,

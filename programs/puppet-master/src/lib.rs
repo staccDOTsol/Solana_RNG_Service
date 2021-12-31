@@ -4,6 +4,7 @@ mod constants;
 mod errors;
 mod myaccounts;
 
+use anchor_lang::solana_program::clock;
 use myaccounts::{House};
 use constants::{HOUSE_SIZE};
 use errors::{ErrorCode};
@@ -68,20 +69,18 @@ mod puppet_master {
     pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
         let recent_blockhashes = &ctx.accounts.recent_blockhashes;
         let user = &ctx.accounts.user;
+        let house = &ctx.accounts.house;
         if user.lamports() < bet {
             return Err(ErrorCode::NotEnoughSOL.into());
         }
-        let author_fee_account = &ctx.accounts.author_fee_account;
-
-        let operator_fee_account = &ctx.accounts.operator_fee_account;
         
         let puppet = &mut ctx.accounts.puppet;
         
         let user_head = user.key;
-        let fee1 = bet.checked_div(1000).ok_or(ErrorCode::NumericalOverflowError)?
-        .checked_mul(35).ok_or(ErrorCode::NumericalOverflowError)?;
-        let fee2 = bet.checked_div(1000).ok_or(ErrorCode::NumericalOverflowError)?
-        .checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?;
+        let fee1 = bet.checked_div(10000).ok_or(ErrorCode::NumericalOverflowError)?
+        .checked_mul(house.fee_basis_points as u64).ok_or(ErrorCode::NumericalOverflowError)?;
+        let fee2 = bet.checked_div(10000).ok_or(ErrorCode::NumericalOverflowError)?
+        .checked_mul((house.fee_basis_points  as u64).checked_div(15).ok_or(ErrorCode::NumericalOverflowError)?).ok_or(ErrorCode::NumericalOverflowError)?;
 
         
         let data = recent_blockhashes.data.borrow();
@@ -89,8 +88,8 @@ mod puppet_master {
         let index = calculate_hash(&HashOfHash {
             recent_blockhash: *most_recent,
             user: user_head.to_bytes(),
-        });
-        
+            clock: clock::Clock::get().unwrap().unix_timestamp as u64
+        }); 
         puppet.data = index;
         invoke(
             &system_instruction::transfer(&user.key(), &ctx.accounts.operator_fee_account.key(), fee1),
@@ -130,14 +129,13 @@ mod puppet_master {
 
     }
     pub fn uncover(ctx: Context<Uncover>) -> ProgramResult {
-        let index = &ctx.accounts.puppet.data.clone();
-
+        let index = ctx.accounts.puppet.data.clone() as usize;
+        let recent_blockhashes = &ctx.accounts.recent_blockhashes;
+        let data = recent_blockhashes.data.borrow();
         
-
-
-        let first = index.to_string().chars().nth(0 as usize).unwrap().to_string();
+        let first = data.iter().nth(index).unwrap().to_string();
         let firstf2: f32 = first.parse::<f32>().unwrap();
-
+       
 
 
         let bet = ctx.accounts.puppet.bet;
@@ -146,6 +144,7 @@ mod puppet_master {
 
 
         let user = &ctx.accounts.user;
+        ctx.accounts.puppet.data = 777;
         
     if firstf2 > 4.0 {
         invoke_signed(
@@ -182,15 +181,7 @@ pub fn initialize(ctx: Context<Initialize>, puppet_bump: u8, uuid: String) -> Pr
     puppet.user = ctx.accounts.user.key();
     puppet.puppet_bump = puppet_bump;
     puppet.uuid = uuid; 
-    let recent_blockhashes = &ctx.accounts.recent_blockhashes;
-    let data = recent_blockhashes.data.borrow();
-    let most_recent = array_ref![data, 8, 8];
-    let index = calculate_hash(&HashOfHash {
-        recent_blockhash: *most_recent,
-        user: puppet.user.to_bytes(),
-    });
-    
-    puppet.data = index;
+
     Ok(())
 }
 pub fn author_fee_withdraw(ctx: Context<AuthorFeeWithdraw>, sol: u64) -> ProgramResult {
@@ -445,4 +436,5 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
  struct HashOfHash {
      recent_blockhash: [u8; 8],
      user: [u8; 32],
+     clock: u64
 }
