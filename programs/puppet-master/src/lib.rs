@@ -8,7 +8,6 @@ use anchor_lang::solana_program::clock;
 use myaccounts::{House};
 use constants::{HOUSE_SIZE};
 use errors::{ErrorCode};
-use crate::utils::*;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use anchor_lang::prelude::*;
@@ -16,7 +15,6 @@ use anchor_lang::solana_program::program::invoke;
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::solana_program::sysvar;
-use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use arrayref::array_ref;
 
@@ -86,11 +84,11 @@ mod puppet_master {
         let data = recent_blockhashes.data.borrow();
         let most_recent = array_ref![data, 8, 8];
         let clock = clock::Clock::get().unwrap().unix_timestamp as u8;
-        let clockArr: [u8; 1] = [clock];
+        let clock_arr: [u8; 1] = [clock];
         let index = calculate_hash(&HashOfHash {
             recent_blockhash: *most_recent,
             user: user_head.to_bytes(),
-            clock: clockArr
+            clock: clock_arr
         }); 
         puppet.data = index;
         invoke(
@@ -208,7 +206,6 @@ pub fn author_fee_withdraw(ctx: Context<AuthorFeeWithdraw>, sol: u64) -> Program
             &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
         )?;
     */
-    let author = &ctx.accounts.author;
     let house = &ctx.accounts.house;
     let author_fee_account = &ctx.accounts.author_fee_account;
     let author_fee_account_destination = &ctx.accounts.author_fee_account_destination;
@@ -242,7 +239,6 @@ pub fn operator_fee_withdraw(ctx: Context<OperatorFeeWithdraw>, sol: u64) -> Pro
             &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
         )?;
     */
-    let operator = &ctx.accounts.operator;
     let house = &ctx.accounts.house;
     let operator_fee_account = &ctx.accounts.operator_fee_account;
     let operator_fee_destination = &ctx.accounts.operator_fee_destination;
@@ -275,7 +271,6 @@ pub fn operator_treasury_withdraw(ctx: Context<OperatorTreasuryWithdraw>, sol: u
             &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
         )?;
     */
-    let operator = &ctx.accounts.operator;
     let house = &ctx.accounts.house;
     let operator_treasury = &ctx.accounts.operator_treasury;
     let operator_treasury_destination = &ctx.accounts.operator_treasury_destination;
