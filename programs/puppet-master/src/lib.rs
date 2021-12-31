@@ -7,13 +7,7 @@ mod myerrors;
 
 use crate::myerrors::myerrors::ErrorCode;
 use crate::constants::constants::HOUSE_SIZE;
-use crate::instructions::uncover::Uncover;
-use crate::instructions::create_house::CreateHouse;
-use crate::instructions::author_fee_withdraw::AuthorFeeWithdraw;
-use crate::instructions::initialize::Initialize;
-use crate::instructions::operator_fee_withdraw::OperatorFeeWithdraw;
-use crate::instructions::operator_treasury_withdraw::OperatorTreasuryWithdraw;
-use crate::instructions::pull_strings::PullStrings;
+use crate::instructions::*;
 use crate::utils::utils::{calculate_hash, HashOfHash};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
@@ -33,11 +27,10 @@ declare_id!("9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg");
 
 #[program]
 mod puppet_master {
-
     use super::*;
 
     pub fn create_house<'info>(
-        ctx: Context<'_, '_, '_, 'info, CreateHouse<'info>>,
+        ctx: Context<'_, '_, '_, 'info, crate::create_house::CreateHouse<'info>>,
         house_bump: u8,
         author_fee_bump: u8,
         operator_treasury_bump: u8,
@@ -74,7 +67,7 @@ mod puppet_master {
         Ok(())
     }
 
-    pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
+    pub fn pull_strings(ctx: Context<crate::pull_strings::PullStrings>, bet: u64) -> ProgramResult {
         let recent_blockhashes = &ctx.accounts.recent_blockhashes;
         let user = &ctx.accounts.user;
         if user.lamports() < bet {
@@ -138,7 +131,7 @@ mod puppet_master {
         Ok(())
 
     }
-    pub fn uncover(ctx: Context<Uncover>) -> ProgramResult {
+    pub fn uncover(ctx: Context<crate::uncover::Uncover>) -> ProgramResult {
         let index = &ctx.accounts.puppet.data.clone();
 
 
@@ -173,7 +166,7 @@ mod puppet_master {
 
         }
     }
-    pub fn initialize(ctx: Context<Initialize>, puppet_bump: u8, uuid: String) -> ProgramResult {
+    pub fn initialize(ctx: Context<crate::initialize::Initialize>, puppet_bump: u8, uuid: String) -> ProgramResult {
         /*
         let signer_seeds = &[b"rng_house".as_ref(), &ctx.accounts.user.key().to_bytes(), &ctx.accounts.house.key().to_bytes(),
                 &[puppet_bump],
@@ -202,7 +195,7 @@ mod puppet_master {
         puppet.data = index;
         Ok(())
     }
-    pub fn author_fee_withdraw(ctx: Context<AuthorFeeWithdraw>, sol: u64) -> ProgramResult {
+    pub fn author_fee_withdraw(ctx: Context<crate::author_fee_withdraw::AuthorFeeWithdraw>, sol: u64) -> ProgramResult {
         /*
       invoke_signed(
                 &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
@@ -236,7 +229,7 @@ mod puppet_master {
     }
 
 
-    pub fn operator_fee_withdraw(ctx: Context<OperatorFeeWithdraw>, sol: u64) -> ProgramResult {
+    pub fn operator_fee_withdraw(ctx: Context<crate::operator_fee_withdraw::OperatorFeeWithdraw>, sol: u64) -> ProgramResult {
         /*
       invoke_signed(
                 &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
@@ -269,7 +262,7 @@ mod puppet_master {
         Ok(())
     }
 
-    pub fn operator_treasury_withdraw(ctx: Context<OperatorTreasuryWithdraw>, sol: u64) -> ProgramResult {
+    pub fn operator_treasury_withdraw(ctx: Context<crate::operator_treasury_withdraw::OperatorTreasuryWithdraw>, sol: u64) -> ProgramResult {
         /*
      invoke_signed(
                &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
