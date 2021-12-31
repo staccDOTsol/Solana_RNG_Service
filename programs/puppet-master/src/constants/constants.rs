@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
 
-
 pub const HOUSE_SIZE: usize = 8 + //key
     32 + // fee payer
     32 + // treasury
