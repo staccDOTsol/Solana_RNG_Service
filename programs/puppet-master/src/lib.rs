@@ -85,10 +85,12 @@ mod puppet_master {
         
         let data = recent_blockhashes.data.borrow();
         let most_recent = array_ref![data, 8, 8];
+        let clock = clock::Clock::get().unwrap().unix_timestamp as u8;
+        let clockArr: [u8; 1] = [clock];
         let index = calculate_hash(&HashOfHash {
             recent_blockhash: *most_recent,
             user: user_head.to_bytes(),
-            clock: clock::Clock::get().unwrap().unix_timestamp as u64
+            clock: clockArr
         }); 
         puppet.data = index;
         invoke(
@@ -129,13 +131,21 @@ mod puppet_master {
 
     }
     pub fn uncover(ctx: Context<Uncover>) -> ProgramResult {
-        let index = ctx.accounts.puppet.data.clone() as usize;
-        let recent_blockhashes = &ctx.accounts.recent_blockhashes;
-        let data = recent_blockhashes.data.borrow();
-        
-        let first = data.iter().nth(index).unwrap().to_string();
-        let firstf2: f32 = first.parse::<f32>().unwrap();
-       
+        let mut index = ctx.accounts.puppet.data.clone() as usize;
+        index = index.checked_add(1000000000).ok_or(ErrorCode::NumericalOverflowError)?;
+        while index > 1000000000 {
+            let first = index.to_string().chars().nth(0).unwrap();
+
+            let mut firstf2: u32 = first.to_string().parse::<u32>().unwrap();
+            
+            firstf2 = firstf2.checked_add(1 as u32).ok_or(ErrorCode::NumericalOverflowError)?;
+            firstf2 = firstf2.checked_mul(10 as u32).ok_or(ErrorCode::NumericalOverflowError)?;
+            let last = index.to_string().chars().nth(0).unwrap();
+            let mut lastf2: u32 = last.to_string().parse::<u32>().unwrap();
+            lastf2 = lastf2.checked_add(1 as u32).ok_or(ErrorCode::NumericalOverflowError)?;
+            lastf2 = lastf2.checked_mul(10 as u32).ok_or(ErrorCode::NumericalOverflowError)?;
+           index = index.checked_div(lastf2 as usize).ok_or(ErrorCode::NumericalOverflowError)?.checked_div(firstf2 as usize).ok_or(ErrorCode::NumericalOverflowError)?;
+        }
 
 
         let bet = ctx.accounts.puppet.bet;
@@ -145,8 +155,10 @@ mod puppet_master {
 
         let user = &ctx.accounts.user;
         ctx.accounts.puppet.data = 777;
-        
-    if firstf2 > 4.0 {
+        let first = index.to_string().chars().last().unwrap();
+
+        let firstf2: f32 = first.to_string().parse::<f32>().unwrap();
+    if firstf2 <= 4.0 {
         invoke_signed(
             &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
             &[
@@ -436,5 +448,5 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
  struct HashOfHash {
      recent_blockhash: [u8; 8],
      user: [u8; 32],
-     clock: u64
+     clock: [u8; 1]
 }

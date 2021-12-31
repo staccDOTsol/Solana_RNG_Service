@@ -18,10 +18,10 @@ const TREASURY = 'treasury';
 const fs = require('fs')
 const anchor = require("@project-serum/anchor");
 async function loadPuppProgram(walletKeyPair){
-  const solConnection = new Connection("https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/");
+  const solConnection = new Connection("https://api.devnet.solana.com");
   const walletWrapper = new anchor.Wallet(walletKeyPair);
   const provider = new anchor.Provider(solConnection, walletWrapper, {
-    preflightCommitment: 'confirmed',
+    preflightCommitment: 'confirmed', commitment: 'confirmed',
   });
   const idl = await anchor.Program.fetchIdl(
     PUPP_PROGRAM_ID,
@@ -90,10 +90,10 @@ async function getHouse(author, operator){
 
 
 async function loadHouseProgram(walletKeyPair) {
-  const solConnection = new Connection("https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/");
+  const solConnection = new Connection("https://api.devnet.solana.com");
   const walletWrapper = new anchor.Wallet(walletKeyPair);
   const provider = new anchor.Provider(solConnection, walletWrapper, {
-    preflightCommitment: 'confirmed',
+    preflightCommitment: 'confirmed', commitment: 'confirmed',
   });
   const idl = await anchor.Program.fetchIdl(
     HOUSE_PROGRAM_ID,
@@ -113,7 +113,9 @@ function loadWalletKey(keypair) {
       new Uint8Array(JSON.parse(fs.readFileSync(keypair).toString())),
   );
 }
-
+let wins = 0;
+const startts = new Date().getTime();
+let losses = 0;
 const jare = "4tui4yfA6MNgLhjXmKBATrPvEUGseEeqQrqAyVHintUQ";
 const author = new PublicKey(jare);
 const walletJson = "./throwaway.json"
@@ -123,10 +125,10 @@ const walletWrapper = new anchor.Wallet(walletKeyPair);
 
 const solConnection = new anchor.web3.Connection(
     //@ts-ignore
-    "https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/",
+    "https://api.devnet.solana.com",
 );
 const provider = new anchor.Provider(solConnection, walletWrapper, {
-  preflightCommitment: 'confirmed',
+  preflightCommitment: 'confirmed', commitment: 'confirmed',
 });
 setTimeout(async function () {
   // Configure the client to use the local cluster.
@@ -140,6 +142,7 @@ setTimeout(async function () {
   const houseObj = await puppetMaster.account.house.fetch(
     house,
   );
+  /*
   console.log(houseObj)
   const operator = houseObj.operator;
   const feetx = await puppetMaster.rpc.authorFeeWithdraw( new anchor.BN( 0.00001 * 10 ** 9 ), {
@@ -159,51 +162,34 @@ setTimeout(async function () {
     signers: [walletKeyPair],
   }); 
   console.log(feetx)
-  /*
-  const newPuppetAccount = anchor.web3.Keypair.generate();
+  */
+    uuid = (Math.floor((Math.random() * 9)).toString() +  Math.floor((Math.random() * 9)) +  Math.floor((Math.random() * 9)) +  Math.floor((Math.random() * 9)) +  Math.floor((Math.random() * 9)) +  Math.floor((Math.random() * 9)))
+ const [newPuppetAccount, newPuppetAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
 
- console.log(newPuppetAccount.publicKey.toBase58())
- await puppet.rpc.initialize({
-    accounts: {
-      puppet: newPuppetAccount.publicKey,
-      user: provider.wallet.publicKey,
-      systemProgram: SystemProgram.programId,
-    },
-    signers: [walletKeyPair, newPuppetAccount],
-  }); 
- let accounts =  {
-  author: houseObj.author,
-  authorFeeAccount: houseObj.authorFeeAccount,
-  operator: houseObj.operator,
-  operatorFeeAccount: houseObj.operatorFeeAccount,
-  house: house,
-  puppet: newPuppetAccount.publicKey,
-  puppetProgram: puppet.programId,
-  operatorTreasury: houseObj.operatorTreasury,
-  recentBlockhashes: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
-  jare: jare,
-  user: provider.wallet.publicKey,
-  systemProgram: SystemProgram.programId,
-}
-for (var abc in  accounts){
-  try{
   // @ts-ignore
-  
-console.log(abc + ": " + accounts[abc].toBase58())
-  } catch (err){
-    console.log(abc + ": " + accounts[abc])
-  }
-}
-  for (let i = 0; i < 100; i++) {
-    await puppetMaster.rpc.pullStrings(new anchor.BN(10 ** 7),       {
+  [Buffer.from("rng_house"), walletKeyPair.publicKey.toBuffer(), house.toBuffer(), Buffer.from(uuid)],
+  HOUSE_PROGRAM_ID
+);
+await puppetMaster.rpc.initialize(newPuppetAccountBump, uuid,{
+  accounts: {
+    puppet: newPuppetAccount,
+    user: walletKeyPair.publicKey,
+    systemProgram: SystemProgram.programId,
+    recentBlockhashes: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+    house: house,
+  },
+  signers: [],
+}); 
+
+  while (true) {
+    await puppetMaster.rpc.pullStrings(new anchor.BN(10 ** 4),       {
       accounts: {
         author: houseObj.author,
         authorFeeAccount: houseObj.authorFeeAccount,
         operator: houseObj.operator,
         operatorFeeAccount: houseObj.operatorFeeAccount,
         house: house,
-        puppet: newPuppetAccount.publicKey,
-        puppetProgram: puppet.programId,
+        puppet: newPuppetAccount,
         operatorTreasury: houseObj.operatorTreasury,
         recentBlockhashes: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
         jare: jare,
@@ -220,9 +206,39 @@ console.log(abc + ": " + accounts[abc].toBase58())
       
     },
     );
-
+    try {
+    await puppetMaster.rpc.uncover( {
+      accounts: {
+        author: houseObj.author,
+        authorFeeAccount: houseObj.authorFeeAccount,
+        operator: houseObj.operator,
+        operatorFeeAccount: houseObj.operatorFeeAccount,
+        house: house,
+        puppet: newPuppetAccount,
+        operatorTreasury: houseObj.operatorTreasury,
+        recentBlockhashes: anchor.web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+        jare: jare,
+        user: provider.wallet.publicKey,
+        systemProgram: SystemProgram.programId,
+      },remainingAccounts: [
+        {
+          pubkey: houseObj.operatorTreasury,
+          isSigner: false,
+          isWritable: true,
+        }
+      ],
+      signers: [walletKeyPair],
+      
+    },
+    );
+    wins++;
+  } catch(err){
+    losses++;
+  }
+  console.log((wins + losses).toString() + ' games played, ' + ((Math.round((wins / (wins + losses)) * 10000)) / 100).toString() + '% winners! Test has been running: ' + ((new Date().getTime() - startts) / 1000 / 60 / 60).toString() + ' hours :)')
+  /*
     // Check the state updated.
-    puppetAccount = await puppet.account.data.fetch(newPuppetAccount.publicKey);
+    puppetAccount = await puppet.account.data.fetch(newPuppetAccount);
     if (puppetAccount.data < 4) {
       console.log(i)    
       console.log(puppetAccount.data.toNumber())
@@ -234,6 +250,7 @@ console.log(abc + ": " + accounts[abc].toBase58())
       console.log('won 0.02 sol :)')
       console.log('')
     }
+    */
   }
-  */
+  
 }, 1)
