@@ -193,7 +193,105 @@ pub fn initialize(ctx: Context<Initialize>, puppet_bump: u8, uuid: String) -> Pr
     puppet.data = index;
     Ok(())
 }
+pub fn author_fee_withdraw(ctx: Context<AuthorFeeWithdraw>, sol: u64) -> ProgramResult {
+    /*
+  invoke_signed(
+            &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
+            &[
+                ctx.accounts.operator_treasury.to_account_info().clone(),
+                user.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+            &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
+        )?;
+    */
+    let author = &ctx.accounts.author;
+    let house = &ctx.accounts.house;
+    let author_fee_account = &ctx.accounts.author_fee_account;
+    let author_fee_account_destination = &ctx.accounts.author_fee_account_destination;
+    
+    if sol > author_fee_account.lamports() {
+        
+        return Err(ErrorCode::NotEnoughSOL.into());
+    }
+    invoke_signed(
+        &system_instruction::transfer(&author_fee_account.key(), &author_fee_account_destination.key(), sol),
+        &[
+            author_fee_account.to_account_info().clone(),
+            author_fee_account_destination.to_account_info().clone(),
+            ctx.accounts.system_program.to_account_info().clone(),
+        ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+        &[&["rng_house".as_bytes(), "fees".as_bytes(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.author_fee_bump]]],
+    )?;
+    Ok(())
+}
 
+
+pub fn operator_fee_withdraw(ctx: Context<OperatorFeeWithdraw>, sol: u64) -> ProgramResult {
+    /*
+  invoke_signed(
+            &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
+            &[
+                ctx.accounts.operator_treasury.to_account_info().clone(),
+                user.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+            &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
+        )?;
+    */
+    let operator = &ctx.accounts.operator;
+    let house = &ctx.accounts.house;
+    let operator_fee_account = &ctx.accounts.operator_fee_account;
+    let operator_fee_destination = &ctx.accounts.operator_fee_destination;
+    
+    if sol > operator_fee_account.lamports() {
+        
+        return Err(ErrorCode::NotEnoughSOL.into());
+    }
+    invoke_signed(
+        &system_instruction::transfer(&operator_fee_account.key(), &operator_fee_destination.key(), sol),
+        &[
+            operator_fee_account.to_account_info().clone(),
+            operator_fee_destination.to_account_info().clone(),
+            ctx.accounts.system_program.to_account_info().clone(),
+        ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+        &[&["rng_house".as_bytes(), "fees".as_bytes(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_fee_bump]]],
+    )?;
+    Ok(())
+}
+
+pub fn operator_treasury_withdraw(ctx: Context<OperatorTreasuryWithdraw>, sol: u64) -> ProgramResult {
+     /*
+  invoke_signed(
+            &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
+            &[
+                ctx.accounts.operator_treasury.to_account_info().clone(),
+                user.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+            &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
+        )?;
+    */
+    let operator = &ctx.accounts.operator;
+    let house = &ctx.accounts.house;
+    let operator_treasury = &ctx.accounts.operator_treasury;
+    let operator_treasury_destination = &ctx.accounts.operator_treasury_destination;
+    
+    if sol > operator_treasury.lamports() {
+        
+        return Err(ErrorCode::NotEnoughSOL.into());
+    }
+    invoke_signed(
+        &system_instruction::transfer(&operator_treasury.key(), &operator_treasury_destination.key(), sol),
+        &[
+            operator_treasury.to_account_info().clone(),
+            operator_treasury_destination.to_account_info().clone(),
+            ctx.accounts.system_program.to_account_info().clone(),
+        ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+        &[&["rng_house".as_bytes(), "treasury".as_bytes(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
+    )?;
+    Ok(())
+}
 }
 
 
@@ -282,14 +380,52 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-pub struct SetData<'info> {
+pub struct OperatorTreasuryWithdraw<'info> {
 
     #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
     house: Account<'info, House>,
-    #[account(mut,seeds=[b"rng_house".as_ref(), &user.key().to_bytes(), &house.key().to_bytes(), &puppet.uuid.as_bytes()],  bump=puppet.puppet_bump)]
-    pub puppet: Account<'info, Data>,
-    #[account(address = puppet.user)]
-    pub user: AccountInfo<'info>,
+   
+#[account(address=house.operator_treasury)]
+operator_treasury: AccountInfo<'info>,
+#[account(address=house.operator_treasury_destination)]
+operator_treasury_destination: AccountInfo<'info>,
+    
+    pub system_program: Program<'info, System>,
+
+    #[account(address=house.operator)]
+        operator: Signer<'info>,
+}
+
+
+
+#[derive(Accounts)]
+pub struct OperatorFeeWithdraw<'info> {
+
+    #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
+    house: Account<'info, House>,
+#[account(address=house.operator_fee_account)]
+operator_fee_account: AccountInfo<'info>,
+#[account(address=house.operator_fee_destination)]
+operator_fee_destination: AccountInfo<'info>,
+#[account(address=house.operator)]
+operator: Signer<'info>,
+pub system_program: Program<'info, System>,
+}
+
+
+#[derive(Accounts)]
+pub struct AuthorFeeWithdraw<'info> {
+
+    #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
+    house: Account<'info, House>,
+
+    #[account(address=house.author_fee_account)]
+    author_fee_account: AccountInfo<'info>,
+    #[account(address=house.author_fee_account_destination)]
+    author_fee_account_destination: AccountInfo<'info>,
+#[account(address=house.author)]
+author: Signer<'info>,
+pub system_program: Program<'info, System>,
 }
 #[account]
 pub struct Data {

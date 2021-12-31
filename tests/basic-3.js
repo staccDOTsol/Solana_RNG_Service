@@ -116,7 +116,7 @@ function loadWalletKey(keypair) {
 
 const jare = "4tui4yfA6MNgLhjXmKBATrPvEUGseEeqQrqAyVHintUQ";
 const author = new PublicKey(jare);
-const walletJson = "/mnt/c/id.json"
+const walletJson = "./throwaway.json"
 
 const walletKeyPair = loadWalletKey(walletJson);
 const walletWrapper = new anchor.Wallet(walletKeyPair);
@@ -133,14 +133,33 @@ setTimeout(async function () {
   anchor.setProvider(provider);
 
   const puppetMaster = await loadHouseProgram(walletKeyPair);
-  const puppet = await loadPuppProgram(walletKeyPair);
+ // const puppet = await loadPuppProgram(walletKeyPair);
   //Initialize a new puppet account.
   const house = new PublicKey("A7WYs23jj9BF91khBkRJPb3TD5BXGivWjDwi5xXPhcnK")
 
   const houseObj = await puppetMaster.account.house.fetch(
     house,
   );
+  console.log(houseObj)
   const operator = houseObj.operator;
+  const feetx = await puppetMaster.rpc.authorFeeWithdraw( new anchor.BN( 0.00001 * 10 ** 9 ), {
+    accounts: {
+      house,
+      authorFeeAccount: houseObj.authorFeeAccount,
+      authorFeeAccountDestination: houseObj.authorFeeAccountDestination,
+      author: walletKeyPair.publicKey,
+      systemProgram: SystemProgram.programId,
+    },remainingAccounts: [
+      {
+        pubkey: houseObj.authorFeeAccount,
+        isSigner: false,
+        isWritable: true,
+      }
+    ],
+    signers: [walletKeyPair],
+  }); 
+  console.log(feetx)
+  /*
   const newPuppetAccount = anchor.web3.Keypair.generate();
 
  console.log(newPuppetAccount.publicKey.toBase58())
@@ -216,4 +235,5 @@ console.log(abc + ": " + accounts[abc].toBase58())
       console.log('')
     }
   }
+  */
 }, 1)
