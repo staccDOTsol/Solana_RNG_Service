@@ -9,7 +9,7 @@ import {
 import {Keypair, SYSVAR_RENT_PUBKEY, SystemProgram} from "@solana/web3.js";
 import * as anchor from '@project-serum/anchor';
 
-const walletJson = "../throwaway.json"
+const walletJson = "./throwaway.json"
 
 const walletKeyPair = loadWalletKey(walletJson);
 

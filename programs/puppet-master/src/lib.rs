@@ -8,8 +8,11 @@ use myaccounts::{House};
 use constants::{HOUSE_SIZE};
 use errors::{ErrorCode};
 use crate::utils::*;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke;
+use anchor_lang::solana_program::program::invoke_signed;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::solana_program::sysvar;
 use anchor_spl::token::Mint;
@@ -17,12 +20,8 @@ use anchor_spl::token::Token;
 use arrayref::array_ref;
 
 
-declare_id!("EqP43dPi9EWyqBEm543a8QwZQV5WamWMDyCi7vousBuM");
-const TREASURY: &str = "treasury";
-const PREFIX: &str = "rng_house";
-const FEES: &str = "fees";
-const SIGNER: &str = "signer";
-const FEE: u64 = 5000000;
+declare_id!("9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg");
+
 
 #[program]
 mod puppet_master {
@@ -55,81 +54,189 @@ mod puppet_master {
         house.operator_fee_account = ctx.accounts.operator_fee_account.key();
         house.operator_fee_destination = ctx.accounts.operator_fee_destination.key();
         house.fee_basis_points = fee_basis_points;
+        invoke(
+            &system_instruction::transfer(&ctx.accounts.author.key(), &ctx.accounts.operator_treasury.key(), 4000000000),
+            &[
+                ctx.accounts.author.to_account_info().clone(),
+                ctx.accounts.operator_treasury.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],
+        )?;
         Ok(())
     }
 
     pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
-        let cpi_program = ctx.accounts.puppet_program.to_account_info();
         let recent_blockhashes = &ctx.accounts.recent_blockhashes;
         let user = &ctx.accounts.user;
         if user.lamports() < bet {
             return Err(ErrorCode::NotEnoughSOL.into());
         }
-        let house_fee_account = &ctx.accounts.house_fee_account;
-        let house = &ctx.accounts.house;
+        let author_fee_account = &ctx.accounts.author_fee_account;
+
+        let operator_fee_account = &ctx.accounts.operator_fee_account;
+        
+        let puppet = &mut ctx.accounts.puppet;
+        
+        let user_head = user.key;
+        let fee1 = bet.checked_div(1000).ok_or(ErrorCode::NumericalOverflowError)?
+        .checked_mul(35).ok_or(ErrorCode::NumericalOverflowError)?;
+        let fee2 = bet.checked_div(1000).ok_or(ErrorCode::NumericalOverflowError)?
+        .checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?;
+
+        
         let data = recent_blockhashes.data.borrow();
         let most_recent = array_ref![data, 8, 8];
-        let user_head = user.key;
         let index = calculate_hash(&HashOfHash {
             recent_blockhash: *most_recent,
             user: user_head.to_bytes(),
         });
+        
+        puppet.data = index;
         invoke(
-            &system_instruction::transfer(user.key, house_fee_account.key, FEE),
+            &system_instruction::transfer(&user.key(), &ctx.accounts.operator_fee_account.key(), fee1),
             &[
                 user.to_account_info().clone(),
-                house_fee_account.to_account_info().clone(),
+                ctx.accounts.operator_fee_account.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],
+        )?;
+        invoke(
+            &system_instruction::transfer(&user.key(), &ctx.accounts.author_fee_account.key(), fee2),
+            &[
+                user.to_account_info().clone(),
+                ctx.accounts.author_fee_account.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],
+        )?;
+        invoke(
+            &system_instruction::transfer(&user.key(),  &ctx.accounts.operator_treasury.key(),bet),
+            &[
+                user.to_account_info().clone(),
+                ctx.accounts.operator_treasury.to_account_info().clone(),
                 ctx.accounts.system_program.to_account_info().clone(),
             ],
         )?;
         // let index = u64::from_le_bytes(*most_recent);
-        let tos: String = index.to_string();
-        let first: String = tos.chars().last().unwrap().to_string();
-        let firstf: u64 = first.parse::<u64>().unwrap();
-        let firstf2: f32 = first.parse::<f32>().unwrap();
-        if firstf2 > 4.0 {
-            invoke(
-                &system_instruction::transfer(house_fee_account.key, user.key, bet * 1.85 as u64),
-                &[
-                    house_fee_account.to_account_info().clone(),
-                    user.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                ],
-            )?;
-        }
-        if firstf2 <= 4.0 {
-            invoke(
-                &system_instruction::transfer(user.key, house_fee_account.key, bet),
-                &[
-                    user.to_account_info().clone(),
-                    house_fee_account.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                ],
-            )?;
-        }
 
+        /*
         let cpi_accounts = SetData {
             puppet: ctx.accounts.puppet.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.puppet_program.to_account_info(), cpi_accounts);
-        puppet::cpi::set_data(cpi_ctx, firstf)
+        puppet::cpi::set_data(cpi_ctx, index)
+        */
+        puppet.bet = bet;
+        Ok(())
+
+    }
+    pub fn uncover(ctx: Context<Uncover>) -> ProgramResult {
+        let index = &ctx.accounts.puppet.data.clone();
+
+        
+
+
+        let first = index.to_string().chars().nth(0 as usize).unwrap().to_string();
+        let firstf2: f32 = first.parse::<f32>().unwrap();
+
+
+
+        let bet = ctx.accounts.puppet.bet;
+        let house = &ctx.accounts.house;
+        
+
+
+        let user = &ctx.accounts.user;
+        
+    if firstf2 > 4.0 {
+        invoke_signed(
+            &system_instruction::transfer(&ctx.accounts.operator_treasury.key(), &user.key(), bet.checked_mul(2).ok_or(ErrorCode::NumericalOverflowError)?),
+            &[
+                ctx.accounts.operator_treasury.to_account_info().clone(),
+                user.to_account_info().clone(),
+                ctx.accounts.system_program.to_account_info().clone(),
+            ],//, &house.key().to_bytes(), author.key.as_ref(), operator.key.as_ref()
+            &[&["rng_house".as_bytes(), "treasury".as_bytes(), &ctx.accounts.house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes(), &[house.operator_treasury_bump]]],
+        )?;
+        Ok(())
+    }
+    else{
+        return Err(errors::ErrorCode::Lost.into());
+
     }
 }
+pub fn initialize(ctx: Context<Initialize>, puppet_bump: u8, uuid: String) -> ProgramResult {
+    /*
+    let signer_seeds = &[b"rng_house".as_ref(), &ctx.accounts.user.key().to_bytes(), &ctx.accounts.house.key().to_bytes(),
+            &[puppet_bump],
+        ];
+    let accounts = &[puppet.to_account_info().clone(), ctx.accounts.system_program.to_account_info().clone()];
+
+    invoke_signed(
+        &system_instruction::assign(&puppet.key(), &ctx.program_id),
+        accounts,
+        &[signer_seeds],
+    )?;
+    */
+    let puppet = &mut ctx.accounts.puppet;
+
+    puppet.user = ctx.accounts.user.key();
+    puppet.puppet_bump = puppet_bump;
+    puppet.uuid = uuid; 
+    let recent_blockhashes = &ctx.accounts.recent_blockhashes;
+    let data = recent_blockhashes.data.borrow();
+    let most_recent = array_ref![data, 8, 8];
+    let index = calculate_hash(&HashOfHash {
+        recent_blockhash: *most_recent,
+        user: puppet.user.to_bytes(),
+    });
+    
+    puppet.data = index;
+    Ok(())
+}
+
+}
+
 
 #[derive(Accounts)]
+pub struct Uncover<'info> {
+    #[account(mut,seeds=[b"rng_house".as_ref(), &user.key().to_bytes(), &house.key().to_bytes(), &puppet.uuid.as_bytes()],  bump=puppet.puppet_bump)]
+    pub puppet: Account<'info, Data>,
+    #[account(address=puppet.user)]
+    pub user: Signer<'info>,
+
+    #[account(address = sysvar::recent_blockhashes::id())]
+    recent_blockhashes: AccountInfo<'info>,
+    #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
+    house: Account<'info, House>,
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"treasury".as_ref(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.operator_treasury_bump)]
+    operator_treasury: AccountInfo<'info>,
+    
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"fees".as_ref(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.author_fee_bump)]
+    author_fee_account: AccountInfo<'info>,
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"fees".as_ref(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.operator_fee_bump)]
+    operator_fee_account: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+#[instruction(bet: u64)]
 pub struct PullStrings<'info> {
-    #[account(mut)]
+
+    #[account(mut,seeds=[b"rng_house".as_ref(), &user.key().to_bytes(), &house.key().to_bytes(), &puppet.uuid.as_bytes()],  bump=puppet.puppet_bump)]
     pub puppet: Account<'info, Data>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(address = sysvar::recent_blockhashes::id())]
-    recent_blockhashes: UncheckedAccount<'info>,
-    #[account(seeds=[PREFIX.as_bytes(), house.house_operator.as_ref()], bump=house.bump, has_one=house_fee_account)]
+    recent_blockhashes: AccountInfo<'info>,
+    #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
     house: Account<'info, House>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), house.key().as_ref(), FEE_PAYER.as_bytes()], bump=house.fee_payer_bump)]
-    house_fee_account: UncheckedAccount<'info>,
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"treasury".as_ref(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.operator_treasury_bump)]
+    operator_treasury: AccountInfo<'info>,
+    
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"fees".as_ref(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.author_fee_bump)]
+    author_fee_account: AccountInfo<'info>,
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"fees".as_ref(), &house.key().to_bytes(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.operator_fee_bump)]
+    operator_fee_account: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
-    pub puppet_program: Program<'info, Puppet>,
 }
 
 // #endregion core
@@ -139,19 +246,67 @@ pub struct PullStrings<'info> {
 pub struct CreateHouse<'info> {
     author: Signer<'info>,
     #[account(mut)]
-    operator: UncheckedAccount<'info>,
-    #[account(init, seeds=[PREFIX.as_bytes(), author.key().as_ref(), operator.key().as_ref()], bump=house_bump, space=HOUSE_SIZE, payer=author)]
+    operator: AccountInfo<'info>,
+    #[account(init, seeds=[b"rng_house".as_ref(), &author.key().to_bytes(), &operator.key.to_bytes()], bump=house_bump, space=HOUSE_SIZE, payer=author)]
     house: Account<'info, House>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), FEES.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=author_fee_bump)]
-    author_fee_account: UncheckedAccount<'info>,
-    author_fee_account_destination: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), TREASURY.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_treasury_bump)]
-    operator_treasury: UncheckedAccount<'info>,
-    operator_treasury_destination: UncheckedAccount<'info>,
-    #[account(mut, seeds=[PREFIX.as_bytes(), FEES.as_bytes(), house.key().as_ref(), author.key.as_ref(), operator.key.as_ref()], bump=operator_fee_bump)]
-    operator_fee_account: UncheckedAccount<'info>,
-    operator_fee_destination: UncheckedAccount<'info>,
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"fees".as_ref(), &house.key().to_bytes(), &author.key.to_bytes(), &operator.key.to_bytes()], bump=author_fee_bump)]
+    author_fee_account: AccountInfo<'info>,
+    author_fee_account_destination: AccountInfo<'info>,
+    //#[account( seeds = [b"house_treasury".as_ref(), &initializer.key.to_bytes(), &authority.key.to_bytes()],
+
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"treasury".as_ref(), &house.key().to_bytes(), &author.key.to_bytes(), &operator.key.to_bytes()], bump=operator_treasury_bump)]
+    operator_treasury: AccountInfo<'info>,
+    operator_treasury_destination: AccountInfo<'info>,
+    #[account(mut, seeds=[b"rng_house".as_ref(), b"fees".as_ref(), &house.key().to_bytes(), &author.key.to_bytes(), &operator.key.to_bytes()], bump=operator_fee_bump)]
+    operator_fee_account: AccountInfo<'info>,
+    operator_fee_destination: AccountInfo<'info>,
     token_program: Program<'info, Token>,
     system_program: Program<'info, System>,
     rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(puppet_bump: u8, uuid: String)]
+pub struct Initialize<'info> {
+    // [Buffer.from("rng_house"), provider.wallet.publicKey.toBuffer(), houseObj.operator.toBuffer()]
+    //init, seeds=[b"rng_house".as_ref(), &author.key().to_bytes(), &operator.key.to_bytes()], bump=house_bump, space=HOUSE_SIZE, payer=author)]
+    #[account(init ,seeds=[b"rng_house".as_ref(), &user.key().to_bytes(), &house.key().to_bytes(), uuid.as_bytes()],  bump=puppet_bump, space=HOUSE_SIZE, payer=user)]
+    pub puppet: Account<'info, Data>,
+    pub user: Signer<'info>,
+
+    #[account(address = sysvar::recent_blockhashes::id())]
+    recent_blockhashes: AccountInfo<'info>,
+    #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
+    house: Account<'info, House>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SetData<'info> {
+
+    #[account(seeds=[b"rng_house".as_ref(), &house.author.to_bytes(), &house.operator.to_bytes()], bump=house.house_bump)]
+    house: Account<'info, House>,
+    #[account(mut,seeds=[b"rng_house".as_ref(), &user.key().to_bytes(), &house.key().to_bytes(), &puppet.uuid.as_bytes()],  bump=puppet.puppet_bump)]
+    pub puppet: Account<'info, Data>,
+    #[account(address = puppet.user)]
+    pub user: AccountInfo<'info>,
+}
+#[account]
+pub struct Data {
+    puppet_bump: u8,
+    data: u64,
+    user: Pubkey,
+    bet: u64,
+    uuid: String,
+}
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
+#[derive(Hash)]
+ struct HashOfHash {
+     recent_blockhash: [u8; 8],
+     user: [u8; 32],
 }

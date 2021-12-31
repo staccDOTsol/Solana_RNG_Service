@@ -15,4 +15,6 @@ pub enum ErrorCode {
     UninitializedAccount,
     #[msg("IncorrectOwner")]
     IncorrectOwner,
+    #[msg("YouLost")]
+    Lost,
 }

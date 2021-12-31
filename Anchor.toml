@@ -3,8 +3,6 @@ cluster = "devnet"
 wallet = "./throwaway.json"
 
 [programs.localnet]
-puppet = "CduvxgqTSJN3BTAYuMBnGAaN2GvTRGpXypQHKVbyvyoA"
-puppet_master = "42M5ne9JyD7c5DPMxitmHrRytoqrxEmaH4ZZ1RkYouyA"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"

@@ -32,13 +32,6 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
     }
 }
 
-pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
-    if account.owner != owner {
-        Err(ErrorCode::IncorrectOwner.into())
-    } else {
-        Ok(())
-    }
-}
 
 /// Create account almost from scratch, lifted from
 /// https://github.com/solana-labs/solana-program-library/blob/7d4873c61721aca25464d42cc5ef651a7923ca79/associated-token-account/program/src/processor.rs#L51-L98
@@ -100,14 +93,4 @@ pub fn create_or_allocate_account_raw<'a>(
     Ok(())
 }
 
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
 
-#[derive(Hash)]
-pub struct HashOfHash {
-    pub recent_blockhash: [u8; 8],
-    pub user: [u8; 32],
-}

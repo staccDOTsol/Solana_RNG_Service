@@ -860,13 +860,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "puppet"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
-]
-
-[[package]]
 name = "puppet-master"
 version = "0.1.0"
 dependencies = [
@@ -874,7 +867,6 @@ dependencies = [
  "anchor-spl",
  "arrayref",
  "metaplex-token-metadata",
- "puppet",
  "spl-associated-token-account",
  "spl-token",
  "thiserror",
