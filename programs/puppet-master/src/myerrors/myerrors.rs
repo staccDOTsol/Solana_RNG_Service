@@ -1,6 +1,6 @@
 use anchor_lang::error;
 #[error]
-pub enum ErrorCode {
+pub enum MyErrorCode {
     #[msg("Not enough SOL to pay for this minting")]
     NotEnoughSOL,
     #[msg("Numerical overflow error!")]

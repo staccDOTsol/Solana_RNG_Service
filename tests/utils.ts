@@ -31,7 +31,7 @@ export async function loadHouseProgram(walletKeyPair: Keypair): Promise<Program>
     HOUSE_PROGRAM_ID,
     provider,
   );
-  
+
   // const idl = await anchor.Program.fetchIdl(HOUSE_PROGRAM_ID, provider);
 
   return new anchor.Program(idl, HOUSE_PROGRAM_ID, provider);
@@ -46,7 +46,7 @@ export async function loadPuppProgram(walletKeyPair: Keypair): Promise<Program> 
     PUPP_PROGRAM_ID,
     provider,
   );
-  
+
   // const idl = await anchor.Program.fetchIdl(HOUSE_PROGRAM_ID, provider);
 
   return new anchor.Program(idl, PUPP_PROGRAM_ID, provider);
@@ -117,4 +117,4 @@ export async function getConfig (
     [Buffer.from(PREFIX), operator.toBuffer(), Buffer.from(uuid)],
     HOUSE_PROGRAM_ID,
   );
-};
+}

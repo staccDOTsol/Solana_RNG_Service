@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::Token;
 
+#[repr(C)]
 #[account]
 pub struct House {
     pub author_fee_account: Pubkey,

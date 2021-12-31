@@ -1,23 +1,15 @@
 use std::collections::hash_map::DefaultHasher;
+use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use crate::myerrors::myerrors::ErrorCode;
-
-use {
-    anchor_lang::{
-        prelude::*,
-        solana_program::{
-            program::invoke_signed,
-            program_pack::{IsInitialized, Pack},
-            system_instruction,
-        },
-    },
-    std::convert::TryInto,
-};
-
+use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program::invoke_signed;
+use anchor_lang::solana_program::program_pack::{IsInitialized, Pack};
+use anchor_lang::solana_program::system_instruction;
+use crate::MyErrorCode;
 
 pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
     if key1 != key2 {
-        Err(ErrorCode::PublicKeyMismatch.into())
+        Err(MyErrorCode::PublicKeyMismatch.into())
     } else {
         Ok(())
     }
@@ -28,7 +20,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 ) -> Result<T, ProgramError> {
     let account: T = T::unpack_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ErrorCode::UninitializedAccount.into())
+        Err(MyErrorCode::UninitializedAccount.into())
     } else {
         Ok(account)
     }

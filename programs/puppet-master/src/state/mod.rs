@@ -1,5 +1,5 @@
 pub mod data;
 pub mod house;
 
-use data::*;
-use house::*;
+use data::Data;
+use house::House;
