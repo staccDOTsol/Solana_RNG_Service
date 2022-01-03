@@ -298,7 +298,7 @@ pub struct Uncover<'info> {
     #[account(mut,seeds=[b"rng_house".as_ref(), &user.key().to_bytes(), &house.key().to_bytes(), &puppet.uuid.as_bytes()],  bump=puppet.puppet_bump)]
     pub puppet: Account<'info, Data>,
     #[account(address=puppet.user)]
-    pub user: Signer<'info>,
+    pub user: AccountInfo<'info>,
 
     #[account(address = sysvar::recent_blockhashes::id())]
     recent_blockhashes: AccountInfo<'info>,
