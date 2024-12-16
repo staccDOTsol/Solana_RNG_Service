@@ -1,10 +1,8 @@
 [provider]
 cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+wallet = "./throwaway.json"
 
 [programs.localnet]
-puppet = "GK3fpjpHjzgYbSqzubDEvXPnrD9YiPmJkfc29AGbBEYm"
-puppet_master = "7yF2TQsGsGiwZXfMq9EuePbjFP8Zjo7rVDTbHfBFPbgt"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"

@@ -1,95 +1,75 @@
-// #region core
 use anchor_lang::prelude::*;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+
 use anchor_lang::solana_program::program::invoke;
+use anchor_lang::solana_program::program::invoke_signed;
 use anchor_lang::solana_program::system_instruction;
 use anchor_lang::solana_program::sysvar;
+use anchor_spl::token::Mint;
+use anchor_spl::token::Token;
 use arrayref::array_ref;
-use puppet::cpi::accounts::SetData;
-use puppet::program::Puppet;
-use puppet::{self, Data};
-use std::cell::RefMut;
-declare_id!("7yF2TQsGsGiwZXfMq9EuePbjFP8Zjo7rVDTbHfBFPbgt");
+
+use myinstructions::*;
+pub mod myinstructions;
+
+// use crate::constants::constants::HOUSE_SIZE;
+// use crate::myerrors::myerrors::MyErrorCode;
+// use crate::utils::utils::{calculate_hash, HashOfHash};
+
+// pub mod myinstructions;
+// pub mod state;
+// pub mod utils;
+// pub mod constants;
+// pub mod myerrors;
+
+declare_id!("9pJ55KszBGk1Td3LbRrWLszAaiXg7YLW5oouLABJwsZg");
 
 #[program]
 mod puppet_master {
+    use crate::create_house::CreateHouse;
     use super::*;
 
-    pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
-        let cpi_program = ctx.accounts.puppet_program.to_account_info();
-        let recent_blockhashes = &ctx.accounts.recent_blockhashes;
-        let user = &ctx.accounts.user;
-        if user.lamports() < bet {
-            return Err(ErrorCode::NotEnoughSOL.into());
-        }
-        let jare = &ctx.accounts.jare;
-        let data = recent_blockhashes.data.borrow();
-        let most_recent = array_ref![data, 8, 8];
-        invoke(
-            &system_instruction::transfer(user.key, jare.key, 5000000),
-            &[
-                user.to_account_info().clone(),
-                jare.to_account_info().clone(),
-                ctx.accounts.system_program.to_account_info().clone(),
-            ],
-        )?;
-        let index = u64::from_le_bytes(*most_recent);
-        let tos: String = index.to_string();
-        let first: String = tos.chars().last().unwrap().to_string();
-        let firstf: u64 = first.parse::<u64>().unwrap();
-        let firstf2: f32 = first.parse::<f32>().unwrap();
-        if firstf2 > 4.0 {
-            invoke(
-                &system_instruction::transfer(jare.key, user.key, bet * 1.85 as u64),
-                &[
-                    jare.to_account_info().clone(),
-                    user.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                ],
-            )?;
-        }
-        if firstf2 <= 4.0 {
-            invoke(
-                &system_instruction::transfer(user.key, jare.key, bet),
-                &[
-                    user.to_account_info().clone(),
-                    jare.to_account_info().clone(),
-                    ctx.accounts.system_program.to_account_info().clone(),
-                ],
-            )?;
-        }
-
-        let cpi_accounts = SetData {
-            puppet: ctx.accounts.puppet.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(ctx.accounts.puppet_program.to_account_info(), cpi_accounts);
-        puppet::cpi::set_data(cpi_ctx, firstf)
+    pub fn create_house<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateHouse<'info>>,
+        house_bump: u8,
+        author_fee_bump: u8,
+        operator_treasury_bump: u8,
+        operator_fee_bump: u8,
+        fee_basis_points: u16,
+    ) -> ProgramResult {
+        myinstructions::create_house::handler(ctx,
+                                            house_bump,
+                                            author_fee_bump,
+                                            operator_treasury_bump,
+                                            operator_fee_bump,
+                                            fee_basis_points)
     }
-}
-#[derive(Accounts)]
-pub struct PullStrings<'info> {
-    #[account(mut)]
-    pub puppet: Account<'info, Data>,
-    pub puppet_program: Program<'info, Puppet>,
-    #[account(mut)]
-    pub user: Signer<'info>,
-    #[account(mut)]
-    pub jare: UncheckedAccount<'info>,
 
-    pub system_program: Program<'info, System>,
+    /*
+    pub fn pull_strings(ctx: Context<PullStrings>, bet: u64) -> ProgramResult {
+        myinstructions::pull_strings::handler(ctx, bet)
+    }
 
-    #[account(address = sysvar::recent_blockhashes::id())]
-    recent_blockhashes: UncheckedAccount<'info>,
-}
-// #endregion core
+    pub fn uncover(ctx: Context<Uncover>) -> ProgramResult {
+        myinstructions::uncover::handler(ctx)
+    }
 
-#[error]
-pub enum ErrorCode {
-    #[msg("Not enough SOL to pay for this minting")]
-    NotEnoughSOL,
+    pub fn initialize(ctx: Context<Initialize>, puppet_bump: u8, uuid: String) -> ProgramResult {
+        myinstructions::initialize::handler(ctx, puppet_bump, uuid)
+    }
 
-    #[msg("Numerical overflow error!")]
-    NumericalOverflowError,
+    pub fn author_fee_withdraw(ctx: Context<AuthorFeeWithdraw>, sol: u64) -> ProgramResult {
+        myinstructions::author_fee_withdraw::handler(ctx, sol)
+    }
 
-    #[msg("Unable to find an unused config line near your random number index")]
-    CannotFindUsableConfigLine,
+    pub fn operator_fee_withdraw(ctx: Context<OperatorFeeWithdraw>, sol: u64) -> ProgramResult {
+        myinstructions::operator_fee_withdraw::handler(ctx, sol)
+    }
+
+    pub fn operator_treasury_withdraw(ctx: Context<OperatorTreasuryWithdraw>, sol: u64) -> ProgramResult {
+        myinstructions::operator_treasury_withdraw::handler(ctx, sol)
+    }
+    */
 }
